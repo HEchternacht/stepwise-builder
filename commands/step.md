@@ -4,8 +4,10 @@ description: Execute the next step of a stepwise build plan, or start a new one 
 
 Use the stepwise-builder skill.
 
+This system builds incrementally — working code over clean code, fewer files over more files, simple logic over abstractions. Each step must leave the project runnable.
+
 Detect mode:
 
 1. No PLAN.md → PLAN mode: call step_planner agent, show plan to user, wait for approval.
 2. PLAN.md exists + user has a new request → APPEND mode: call step_planner agent in append mode, show new steps, wait for approval.
-3. PLAN.md exists + no new request → EXECUTE mode: for the next pending step, call step_developer agent. It writes code, runs the check, and reports PASS or FAIL. On PASS mark done and continue. On FAIL mark blocked and stop.
+3. PLAN.md exists + no new request → EXECUTE mode: for the next pending step, call step_developer agent. It writes code, runs the check, updates PLAN.md, and reports PASS or FAIL. On PASS continue. On FAIL stop and report.
