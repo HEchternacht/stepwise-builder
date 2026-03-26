@@ -2,7 +2,7 @@
 description: Execute the next step of a stepwise build plan, or start a new one if PLAN.md does not exist.
 ---
 
-Use the stepwise-builder skill. Invoke token-efficiency first if available.
+Use the stepwise-builder skill.
 
 Detect mode:
 
