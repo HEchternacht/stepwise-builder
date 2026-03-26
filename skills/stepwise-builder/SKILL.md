@@ -106,3 +106,26 @@ Read the RESULT line from the report:
 
 - **PASS** → set Status to `done` in PLAN.md → proceed to next step.
 - **FAIL** → set Status to `blocked` in PLAN.md → stop → report the full output and REASON to the user → wait for instructions.
+
+### After all steps are done
+
+When every step in PLAN.md has Status `done`, call step_tester for E2E validation:
+
+```
+Agent(
+  subagent_type: "step_tester",
+  description: "E2E — PROJECT_NAME",
+  prompt: "PROJECT: PROJECT_NAME — ONE_LINE_DESCRIPTION
+
+CHECKS:
+1. MOST_MEANINGFUL_RUNNABLE_CHECK (e.g. start the app and hit main endpoint)
+2. SECONDARY_CHECK_IF_ANY
+
+DIR: ABSOLUTE_PATH"
+)
+```
+
+Derive the checks from the final step's CHECK plus any integration-level command that exercises the whole system. Keep it to 1-3 commands max.
+
+- **OVERALL PASS** → report success to the user. Done.
+- **OVERALL FAIL** → report full E2E output to the user. Ask how to proceed.

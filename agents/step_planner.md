@@ -26,12 +26,23 @@ You will receive:
 
 ## Step 2 — Design the steps
 
-For each step ask yourself:
-1. Does it do exactly ONE thing? If the title needs "and" — split it.
-2. Can it be verified with a single command under 3 seconds? If not — make it smaller.
-3. Does it only touch files that don't yet exist or haven't been touched by an earlier step?
+**Group by module, not by action.** If two actions touch the same file or implement the same concept, they belong in the same step. Fewer, more complete steps are better than many tiny ones.
 
-Typical order: env setup → install deps → minimal runnable skeleton → core logic → each feature (one step each) → config → final check.
+For each step ask yourself:
+1. Does everything in this step touch the same file(s) or the same concept? If not — split it.
+2. Would merging this step with the next one keep the same file scope? If yes — merge them.
+3. Can it be verified with a single command under 3 seconds? If not — make it smaller.
+
+Typical order: env setup → install deps → minimal runnable skeleton → each module/feature (all files for that module in one step) → config → (E2E checks are added automatically by the orchestrator, do not add them to the plan).
+
+**Examples of correct grouping:**
+- Route + its handler + its schema = one step (same module)
+- Model + its migration = one step (same concept)
+- Auth middleware + auth routes = one step (same feature)
+
+**Examples of wrong splitting:**
+- "Create file X" then "Add function to file X" → merge into one step
+- "Add route" then "Add handler for that route" → merge into one step
 
 ---
 
