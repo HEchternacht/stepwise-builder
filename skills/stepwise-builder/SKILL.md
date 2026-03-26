@@ -110,7 +110,20 @@ Working directory: ABSOLUTE_PATH"
 )
 ```
 
-**After step_developer returns:**
+**After step_developer returns, always call step_smoketest:**
+
+```
+Agent(
+  subagent_type: "step_smoketest",
+  description: "Smoketest Step N — TITLE",
+  prompt: "STEP: N — TITLE
+CHECK: COPY_CHECK_FROM_PLAN
+PLAN_PATH: ABSOLUTE_PATH_TO_PLAN_MD
+DIR: ABSOLUTE_PATH"
+)
+```
+
+**After step_smoketest returns:**
 - **PASS** → proceed to the next step.
 - **FAIL** → stop, report full output and REASON to the user, wait for instructions.
 

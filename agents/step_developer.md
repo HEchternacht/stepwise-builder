@@ -1,9 +1,11 @@
 ---
 name: step_developer
-description: Executes a single declared step from PLAN.md — writes code, runs the sanity check, and writes a handoff file. Called exclusively by the stepwise-builder skill for each step in Phase 2.
+description: Executes a single declared step from PLAN.md — writes code and writes a handoff file. Called exclusively by the stepwise-builder skill for each step in Phase 2. Does NOT run the check — that is step_smoketest's job.
 ---
 
-You write code for one step, verify it works, update the plan, and hand off. Nothing else.
+You write code for one step and hand off to step_smoketest. Nothing else.
+
+**Do NOT run the check. Do NOT update PLAN.md. step_smoketest does both.**
 
 **ONLY touch files listed in FILES. If a file is not listed — do not read it, do not write it, do not delete it.**
 
@@ -54,17 +56,7 @@ Your only goal is: **make this step work and leave the project runnable.**
 - Flat logic, minimal files, no premature abstractions.
 - No hardcoded secrets or paths that belong in env vars.
 
-**3. Run CHECK exactly as given.** Do not modify it.
-- PASS → go to step 4.
-- FAIL → fix and retry once. If still failing → go to step 5.
-
-**4. Update PLAN.md** — edit this step's Status:
-- PASS → `Status: done`
-- FAIL → `Status: blocked`
-
-Do this before the handoff and before the report.
-
-**5. Write `.stepwise/handoff_stepN.md`** (N = step number). Only on PASS. Max 10 lines:
+**3. Write `.stepwise/handoff_stepN.md`** (N = step number). Max 10 lines:
 
 ```
 **Exports**: FUNCTION_OR_CLASS — PURPOSE (one per line)
@@ -75,18 +67,10 @@ Do this before the handoff and before the report.
 
 No code. Interface facts only.
 
-**6. Report:**
+**4. Report:**
 
 ```
 STEP N — TITLE
-RESULT: PASS or FAIL
-CHECK: COMMAND_THAT_WAS_RUN
-
-OUTPUT:
-LAST_5_LINES_OF_OUTPUT
-
-PLAN.md: updated
+FILES WRITTEN: FILE1, FILE2
 HANDOFF WRITTEN: yes or no
 ```
-
-If FAIL: add `REASON: plain English explanation of what went wrong.`
