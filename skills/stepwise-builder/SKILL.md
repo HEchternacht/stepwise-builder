@@ -1,6 +1,6 @@
 ---
 name: stepwise-builder
-description: Agentic step-by-step project builder that breaks any implementation request into small, independently testable increments. Use this skill whenever a user asks to build a project, implement a feature from scratch, scaffold a new application, create an API, set up a service, or any multi-step coding task — even if they just say "build X", "create a Y app", or "implement Z". Also use when the user wants to add a feature or fix something to an existing stepwise project. This skill is fundamentally different from normal one-shot coding: it plans exhaustively first, gets user approval, then executes one step at a time via sequential subagents, each verified by a quick sanity check before proceeding to the next.
+description: "Agentic step-by-step project builder. Plans first, gets approval, then executes one verified step at a time via subagents. Use for any build, feature, fix, or multi-step coding task."
 ---
 
 # Stepwise Builder

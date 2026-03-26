@@ -1,3 +1,7 @@
+---
+description: Execute the next step of a stepwise build plan, or start a new one if PLAN.md does not exist.
+---
+
 Use the stepwise-builder skill. Follow Phase 0 to detect the correct mode:
 
 - If PLAN.md does not exist: Phase 1 — ask what to build, generate the plan, wait for approval.
