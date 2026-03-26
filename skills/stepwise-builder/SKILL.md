@@ -1,170 +1,182 @@
 ---
 name: stepwise-builder
-description: Agentic step-by-step project builder that breaks any implementation request into small, independently testable increments. Use this skill whenever a user asks to build a project, implement a feature from scratch, scaffold a new application, create an API, set up a service, or any multi-step coding task — even if they just say "build X", "create a Y app", or "implement Z". This skill is fundamentally different from normal one-shot coding: it plans exhaustively first, gets user approval, then executes one step at a time via sequential subagents, each verified by a smoke test before proceeding to the next. Always use this skill for any implementation request that involves more than one logical piece of work.
+description: Agentic step-by-step project builder that breaks any implementation request into small, independently testable increments. Use this skill whenever a user asks to build a project, implement a feature from scratch, scaffold a new application, create an API, set up a service, or any multi-step coding task — even if they just say "build X", "create a Y app", or "implement Z". Also use when the user wants to add a feature or fix something to an existing stepwise project. This skill is fundamentally different from normal one-shot coding: it plans exhaustively first, gets user approval, then executes one step at a time via sequential subagents, each verified by a quick sanity check before proceeding to the next.
 ---
 
 # Stepwise Builder
 
-A disciplined, incremental build workflow. The core idea: small steps, verified at each boundary, minimize error accumulation.
+A disciplined, incremental build workflow. Small steps, verified at each boundary, minimal token usage between steps.
 
-## Why this matters
+## On start
 
-When a system is built all at once, errors compound invisibly. By the time something breaks, it's impossible to know which layer introduced the problem. Building in verified increments keeps each boundary clean: if step N passes its smoke test, it's a known-good foundation for step N+1.
+If the `/token-efficiency` skill is available, invoke it before doing anything else.
+
+---
+
+## Phase 0 — Detect mode
+
+Before planning, check if `PLAN.md` already exists in the project root.
+
+- **No PLAN.md** → proceed to Phase 1 (new project)
+- **PLAN.md exists + user is adding a feature or fix** → proceed to Phase 0b (append steps)
+- **PLAN.md exists + user typed `/step`** → proceed to Phase 2 (resume execution)
+
+### Phase 0b — Append steps to existing plan
+
+When the user wants to add a feature or fix something in an already-planned project, do NOT start a new plan. Instead:
+
+1. Read `PLAN.md`
+2. Design only the new steps needed (same format as below)
+3. Append them to `PLAN.md` with status `pending`
+4. Tell the user: "Added N steps to the plan. Ready to execute?"
+5. On approval, proceed to Phase 2 at the first new pending step
+
+---
 
 ## Phase 1 — Plan
 
-Before writing any code, generate a complete step-by-step plan and get the user's approval.
+Generate a complete step-by-step plan and get user approval before writing any code.
 
-### How to decompose a request into steps
+### How to decompose into steps
 
-Think in layers, smallest to largest. A good step:
-- Does exactly one logical thing (install deps, scaffold a file, add a route)
-- Can be verified with a quick smoke test (run it, hit an endpoint, import a module)
+A good step:
+- Does exactly one logical thing
+- Can be verified with a one-liner sanity check
 - Is small enough that if it breaks, the cause is obvious
-- Leaves prior code untouched unless integration is the explicit purpose of that step
+- Leaves prior files untouched unless integration is the explicit purpose of that step
 
-Typical step categories, roughly in order:
-1. Environment / tooling setup (language version, virtualenv, package manager init)
-2. Dependency declaration and installation
-3. "Hello world" scaffold — the smallest runnable skeleton
-4. Core domain logic (pure functions, utilities, algorithms) — isolated from the framework
-5. Framework integration — wire the domain logic into the app
-6. Each additional route / feature / module — one at a time
-7. Configuration, env vars, secrets handling
-8. Final integration and end-to-end check
+Typical order: env setup → deps → skeleton → domain logic → framework integration → each feature → config → final check.
 
-Not every project needs all categories. Adapt to what makes sense. The number of steps should match the complexity of the request — a simple CRUD API might be 6 steps, a complex multi-service system might be 15+.
+Adapt to complexity: a simple API might be 6 steps, a multi-service system 15+.
 
-### Writing the plan
-
-Save the plan to `PLAN.md` in the project root with this structure:
+### PLAN.md format
 
 ```markdown
 # Build Plan: <project name>
 
 ## Goal
-<one paragraph describing what we're building and why this plan is structured this way>
+<one paragraph>
 
 ## Steps
 
-### Step 1 — <short title>
+### Step 1 — <title>
 **What**: <what this step does>
-**Why**: <why this step comes before the next one>
-**Smoke test**: <exact command or action that proves this step worked>
-**Files touched**: <list of files this step creates or modifies>
+**Files**: <files created or modified>
+**Check**: <one-liner to verify it works>
 **Status**: pending
-
-### Step 2 — <short title>
-...
 ```
 
-After writing `PLAN.md`, present the plan to the user clearly and ask: "Does this plan look right? Any steps to add, remove, or reorder before I start?"
+After writing `PLAN.md`, present the plan and ask: "Does this look right? Any changes before I start?"
 
-Do not proceed to Phase 2 until the user approves. If they request changes, update `PLAN.md` and re-present.
+Do not proceed until the user approves.
 
 ---
 
 ## Phase 2 — Execute
 
-Once the plan is approved, execute each step by spawning a subagent. Steps are strictly sequential — never start step N+1 until step N's subagent has completed and its smoke test passed.
+Execute steps strictly sequentially. Never start step N+1 until step N is done and its check passed.
 
-### Before spawning each subagent
+### Token-efficient execution
 
-1. Read `PLAN.md` and note the current step
-2. Collect the current code state: list and read all relevant files the subagent will need context on (don't dump the entire project, just files that relate to this step)
-3. Note what the smoke test for this step must verify
+**Before spawning each subagent**, the orchestrator must:
+
+1. Read `PLAN.md` — identify the current pending step
+2. Read **only** the handoff file from the previous step (`.stepwise/handoff_stepN.md`) — do not re-read source files unless they are in the current step's `Files`
+3. Read source files **only** if they are listed in the current step's `Files` — nothing else
+4. Mark the step `in progress` in `PLAN.md`
+
+This means: **no full project scans between steps**. The handoff is the only inter-step context.
 
 ### Subagent prompt structure
 
-Each subagent receives a prompt like this:
-
 ```
-You are executing step N of a stepwise build plan.
+You are executing Step N of a stepwise build plan.
 
-## Your task
-<copy the step's "What" from PLAN.md verbatim>
+## Task
+<copy "What" from PLAN.md verbatim>
 
-## Context: what has been built so far
-<paste relevant file contents — only files this step touches or depends on>
+## Files you may create or modify
+<list from "Files" in PLAN.md>
+
+## Context from previous step
+<paste contents of .stepwise/handoff_stepN-1.md — nothing else>
 
 ## Constraints
-- Only create or modify the files listed in "Files touched" for this step
-- Do not refactor, rename, or clean up code from previous steps unless it is strictly necessary to make this step work
-- If you must touch a prior file (e.g., to register a new route), change as little as possible
+- Only touch files listed above
+- Do not refactor prior code unless strictly required
+- Minimal changes to any file not owned by this step
 
-## Smoke test
-When your code is written, run this smoke test and confirm it passes:
-<exact smoke test command from PLAN.md>
+## Sanity check
+Run this when done and confirm it passes:
+<"Check" from PLAN.md>
 
-The smoke test must pass before you finish. If it fails, see the failure protocol below.
+If it fails: attempt fix up to 2 times, then stop and report the error clearly.
 
-## Smoke test failure protocol
-1. Read the error carefully and attempt a fix (up to 3 attempts)
-2. If still failing, search online for the error (use WebSearch if available)
-3. If still failing after searching, stop and clearly report: what you tried, what the error is, and what you think might be wrong — so the user can intervene
-
-## When you are done
-Report:
-- What files were created or modified
-- The smoke test command you ran and its output (paste the relevant part)
-- Any notes for the next step (e.g., "the math utils module is at src/math_utils.py and exports these functions: ...")
+## When done, write .stepwise/handoff_stepN.md with this exact format:
+**Exports**: <functions/classes/vars other steps may need, one line each>
+**Env vars**: <any env vars consumed or produced>
+**Notes**: <one or two lines the next step must know — nothing else>
 ```
 
 ### After each subagent completes
 
-1. Read the subagent's report
-2. Update `PLAN.md` — change the step's `Status` from `pending` to `done` (or `blocked` if it failed)
-3. If smoke test passed: proceed to the next step
-4. If smoke test failed and the subagent could not recover: pause and report clearly to the user before proceeding
+1. Update step status in `PLAN.md` to `done` or `blocked`
+2. If `blocked`: stop and report to user before continuing
+3. If `done`: proceed to next pending step
 
-### Tracking progress
+### Sanity check philosophy
 
-Keep `PLAN.md` as the live source of truth. After every step, its statuses should reflect reality:
-- `pending` → not started
-- `in progress` → subagent currently running
-- `done` → smoke test passed
-- `blocked` → failed, needs user intervention
+The check answers one question: **"Did this step basically work?"**
+
+- `python -c "import mymodule"` — imports without error
+- `node -e "require('./utils')"` — loads without error
+- `cargo check` — compiles
+- A process starts and exits 0
+
+Not unit tests. Not coverage. Not edge cases. Just: does it run?
+
+Prefer single-command checks that exit in under 2 seconds.
 
 ---
 
-## Smoke test philosophy
+## Handoff files
 
-Smoke tests are not unit tests. They answer one question: **"Is this step basically working?"**
+Stored in `.stepwise/handoff_stepN.md`. Written by each subagent, read by the next.
 
-Good smoke tests:
-- `python -c "import mymodule; print('ok')"` — does the module import without errors?
-- `curl -s http://localhost:8000/health` — does the server respond?
-- `node -e "const x = require('./utils'); console.log(x.add(1,2))"` — does the function return something?
-- Running the app and checking it starts without crashing
+**Rules:**
+- Max 10 lines
+- Only what the next step actually needs
+- No code, no file contents — only interface facts
+- Orchestrator never modifies them, only subagents write them
 
-Bad smoke tests:
-- Full test suites with many edge cases (too slow, too much coverage required)
-- Tests that depend on external services not yet set up
-- Tests that check correctness deeply (that's for later)
+These files are the memory of the build. They replace file re-reading between steps.
 
-If a project has its own test runner already set up by the time a step runs, a `--smoke` or minimal subset is fine. Otherwise, a quick one-liner is ideal.
+---
+
+## Tracking
+
+`PLAN.md` is the live source of truth:
+- `pending` — not started
+- `in progress` — subagent running
+- `done` — check passed
+- `blocked` — failed, needs user intervention
 
 ---
 
 ## Step isolation rules
 
-These rules minimize the chance that one step's agent breaks another's work:
-
-1. **Each step declares its files upfront** in the plan — the subagent must respect this
-2. **Integration steps are explicit steps** — if step 5 is "couple math utils with the API", that's a dedicated step, not a side effect of another
-3. **Read freely, write minimally** — subagents can read any file for context, but only write to their declared files
-4. **No opportunistic refactoring** — if earlier code looks messy, that's fine; touching it introduces risk
+1. Each step declares its files upfront — subagent must respect this
+2. Integration steps are explicit — coupling is a dedicated step, not a side effect
+3. Read freely, write minimally — subagents can read anything, but only write to declared files
+4. No opportunistic refactoring
 
 ---
 
-## Adapting to the project type
+## Stack detection
 
-The plan structure adapts to the language and framework:
+- **Python**: venv → requirements/pyproject → skeleton → domain → integration
+- **Node/TypeScript**: npm init → tsconfig → skeleton → domain → integration
+- **Rust**: cargo new → Cargo.toml deps → module structure
+- **Go**: go mod init → package structure
 
-- **Python**: steps for `venv`, `requirements.txt`/`pyproject.toml`, then framework scaffold
-- **Node/TypeScript**: steps for `npm init`, `tsconfig.json`, then framework scaffold
-- **Rust**: steps for `cargo new`, dependency declarations in `Cargo.toml`, then module structure
-- **Go**: steps for `go mod init`, then package structure
-- Any other: follow the same pattern — environment, deps, skeleton, domain, integration
-
-When uncertain about the stack, ask the user before writing the plan.
+When uncertain about the stack, ask before writing the plan.
