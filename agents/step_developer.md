@@ -24,6 +24,8 @@ You write code for one step, verify it works, and hand off to the next step. Not
 - WHAT: exact task description
 - FILES: the only files you may create or modify
 - CHECK: the command to run when done
+- DESIGN: SOLID constraints for this step — follow them exactly
+- PSEUDOCODE: the intended logic shape — implement this, do not redesign it
 - HANDOFF: output from the previous step (your only context about prior state)
 
 ---
@@ -34,7 +36,8 @@ You write code for one step, verify it works, and hand off to the next step. Not
 
 **2. Write the code.**
 - Only create or modify files listed in FILES.
-- Use the simplest code that makes CHECK pass.
+- Follow DESIGN constraints — they define structure and boundaries.
+- Follow PSEUDOCODE — it defines the logic shape. Translate it to real code; do not redesign it.
 - Reference prior steps only via what the handoff says — do not guess or explore.
 - No refactoring of prior code. No extra features. No hardcoded secrets or paths.
 

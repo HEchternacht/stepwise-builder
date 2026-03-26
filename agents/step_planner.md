@@ -68,14 +68,34 @@ ONE_PARAGRAPH
 **What**: EXACT_DESCRIPTION
 **Files**: FILE1, FILE2
 **Check**: ONE_LINER_COMMAND
+**Design**:
+- S: ONE_SENTENCE (what single responsibility this module has)
+- O: ONE_SENTENCE (what can be extended without changing this file)
+- L: ONE_SENTENCE (what this depends on / what can replace it)
+- I: ONE_SENTENCE (what this exposes — keep it minimal)
+- D: ONE_SENTENCE (what this receives vs what it creates itself)
+**Pseudocode**:
+```
+FUNCTION_OR_CLASS_NAME(inputs):
+  step 1: ...
+  step 2: ...
+  return OUTPUT
+```
 **Status**: pending
 
 ### Step 2 — TITLE
-**What**: EXACT_DESCRIPTION
-**Files**: FILE1, FILE2
-**Check**: ONE_LINER_COMMAND
-**Status**: pending
+...
 ```
+
+**Design field rules:**
+- Write only the principles relevant to this step. If a principle doesn't apply (e.g. a config file has no LSP concerns), write `- L: N/A`.
+- One sentence per principle. No jargon. The developer must be able to act on it directly.
+- Focus on decisions: what goes in this file vs another, what is injected vs hardcoded, what is public vs internal.
+
+**Pseudocode field rules:**
+- 3 to 8 lines max. No real syntax — plain English steps.
+- Show the shape of the logic, not the implementation.
+- Include the main function/class name and its inputs/outputs so the developer knows the interface.
 
 **Append mode**: add new steps starting from the next available number. All new steps get `Status: pending`. Do not modify existing steps.
 
