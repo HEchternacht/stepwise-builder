@@ -1,0 +1,14 @@
+{
+  "name": "stepwise-builder",
+  "owner": {
+    "name": "HEchternacht"
+  },
+  "plugins": [
+    {
+      "name": "stepwise-builder",
+      "source": ".",
+      "description": "Agentic step-by-step project builder. Plans first, gets approval, then executes one verified step at a time via subagents.",
+      "version": "1.0.0"
+    }
+  ]
+}
