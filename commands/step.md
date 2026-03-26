@@ -1,0 +1,1 @@
+Use the stepwise-builder skill. Read PLAN.md in the current project root and execute the next pending step. If PLAN.md does not exist, start from Phase 1: ask the user what they want to build, generate the plan, and wait for approval before executing anything.
