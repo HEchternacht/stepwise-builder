@@ -76,9 +76,11 @@ Do not proceed until the user approves.
 
 Execute steps strictly sequentially. Never start step N+1 until step N is done and its check passed.
 
+**Each step MUST be executed by invoking the `Agent` tool** (subagent_type: `general-purpose`). Do not execute steps directly in the main conversation — always spawn a dedicated agent. This is not optional.
+
 ### Token-efficient execution
 
-**Before spawning each subagent**, the orchestrator must:
+**Before invoking the Agent tool for each step**, the orchestrator must:
 
 1. Read `PLAN.md` — identify the current pending step
 2. Read **only** the handoff file from the previous step (`.stepwise/handoff_stepN.md`) — do not re-read source files unless they are in the current step's `Files`
@@ -86,6 +88,18 @@ Execute steps strictly sequentially. Never start step N+1 until step N is done a
 4. Mark the step `in progress` in `PLAN.md`
 
 This means: **no full project scans between steps**. The handoff is the only inter-step context.
+
+### Agent tool usage
+
+Call the Agent tool like this for every step:
+
+```
+Agent(
+  subagent_type: "general-purpose",
+  description: "Step N — <title>",
+  prompt: <subagent prompt below>
+)
+```
 
 ### Subagent prompt structure
 
