@@ -1,0 +1,10 @@
+{
+  "name": "stepwise-builder",
+  "version": "1.0.0",
+  "description": "Agentic step-by-step project builder. Plans exhaustively, gets approval, then executes one verified step at a time via subagents.",
+  "author": {
+    "name": "HEchternacht"
+  },
+  "homepage": "https://github.com/HEchternacht/stepwise-builder",
+  "license": "MIT"
+}
