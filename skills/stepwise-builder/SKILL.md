@@ -100,21 +100,9 @@ Working directory: ABSOLUTE_PATH"
 )
 ```
 
-### Call step_tester
+### After step_developer returns
 
-Always call after step_developer, even if developer reports success:
-
-```
-Agent(
-  subagent_type: "step_tester",
-  description: "Test Step N — TITLE",
-  prompt: "STEP: N — TITLE
-CHECK: EXACT_COMMAND_FROM_PLAN
-DIR: ABSOLUTE_PATH"
-)
-```
-
-### After tester returns
+Read the RESULT line from the report:
 
 - **PASS** → set Status to `done` in PLAN.md → proceed to next step.
-- **FAIL** → set Status to `blocked` in PLAN.md → stop → report full tester output to user → wait for instructions.
+- **FAIL** → set Status to `blocked` in PLAN.md → stop → report the full output and REASON to the user → wait for instructions.
