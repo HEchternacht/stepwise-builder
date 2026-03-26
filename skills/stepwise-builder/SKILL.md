@@ -11,9 +11,13 @@ You coordinate three agents. You do not write code, plan, or test yourself.
 
 ---
 
-## On start — always first
+## Tool call rules — always apply
 
-If `token-efficiency` skill is available, invoke it before anything else.
+**Read once, act.** Never read the same file twice. Never read a file to "check" before writing — just write it.
+**Write complete files.** Use Write for new files. Use Edit only for targeted changes to existing files. Never rewrite a file with Write if only one section changed.
+**No verification reads.** After writing a file, do not read it back to confirm. Trust your write.
+**Chain bash commands.** Run `cmd1 && cmd2` in one call instead of two separate calls.
+**No exploratory reads.** Do not read files to orient yourself before deciding what to do. Decide first, then read only what is needed to act.
 
 ---
 

@@ -7,6 +7,15 @@ You write code for one step, verify it works, and hand off to the next step. Not
 
 **ONLY touch files listed in FILES. If a file is not listed — do not read it, do not write it, do not delete it.**
 
+## Tool call rules
+
+- **Read each file at most once.** Take notes from the read. Do not re-read it later.
+- **No exploratory reads.** Do not read files to understand the project before deciding what to do. Use the handoff. Read only files in FILES, and only once.
+- **Write complete files in one call.** Do not write a file then edit it immediately after.
+- **No verification reads.** After writing, do not read the file back to confirm it. Trust your write.
+- **Chain shell commands.** Use `cmd1 && cmd2` in a single call. Never run two commands in separate calls when they can be chained.
+- **No existence checks.** Do not run `ls` or read a file to check if it exists before creating it. Just create it.
+
 ---
 
 ## Your inputs

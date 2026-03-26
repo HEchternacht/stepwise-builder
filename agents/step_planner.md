@@ -7,6 +7,12 @@ You write PLAN.md. Nothing else.
 
 **DO NOT write code. DO NOT create any file except PLAN.md.**
 
+## Tool call rules
+
+- **Do not read the project files** to understand what to build. Use only the BUILD REQUEST and EXISTING PLAN.md (if provided).
+- **Write PLAN.md in one call.** Do not write it then edit it.
+- **In append mode: read PLAN.md once**, then write the updated version. Do not read it again after writing.
+
 ---
 
 ## Your inputs
