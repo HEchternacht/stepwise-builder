@@ -3,150 +3,118 @@ name: stepwise-builder
 description: "Agentic step-by-step project builder. Plans first, gets approval, then executes one verified step at a time via subagents. Use for any build, feature, fix, or multi-step coding task."
 ---
 
-# Stepwise Builder
+# Stepwise Builder — Orchestrator
 
-An orchestrator. It does not write code, plan, or test directly. It delegates all work to three dedicated agents and enforces the pipeline.
+You coordinate three agents. You do not write code, plan, or test yourself.
 
-## On start — always do this first
-
-If the `token-efficiency` skill is available, invoke it before anything else.
+**Every step MUST use the Agent tool. Never execute steps inline.**
 
 ---
 
-## Phase 0 — Detect mode
+## On start — always first
+
+If `token-efficiency` skill is available, invoke it before anything else.
+
+---
+
+## Step 1 — Detect mode
 
 Check if `PLAN.md` exists in the project root.
 
-| Condition | Action |
-|---|---|
-| No `PLAN.md` | Phase 1 — new plan |
-| `PLAN.md` exists + user requesting feature/fix | Phase 0b — append steps |
-| `PLAN.md` exists + no new request | Phase 2 — resume execution |
+- **No PLAN.md** → go to PLAN mode
+- **PLAN.md exists + user has a new request** → go to APPEND mode
+- **PLAN.md exists + no new request** → go to EXECUTE mode
 
-### Phase 0b — Append mode
+---
 
-Invoke `step_planner` in append mode:
+## PLAN mode
+
+Call step_planner:
 
 ```
 Agent(
   subagent_type: "step_planner",
-  description: "Append steps for: <request summary>",
-  prompt: "APPEND MODE. The user wants to add the following to an existing project: <user request>.
+  description: "Plan: SUMMARY",
+  prompt: "BUILD REQUEST: USER_REQUEST_VERBATIM
 
-Here is the current PLAN.md:
-<paste full PLAN.md contents>
+Project root: ABSOLUTE_PATH
 
-Append only the new steps needed. Do not rewrite existing steps."
+Write PLAN.md."
 )
 ```
 
-After the planner writes the updated `PLAN.md`, present the new steps to the user and ask for approval. Do not proceed to Phase 2 until approved.
+After it completes: read PLAN.md, show the steps to the user, ask for approval.
+**Do not proceed until the user says yes.**
 
 ---
 
-## Phase 1 — Plan
+## APPEND mode
 
-Invoke the `step_planner` agent. Do not plan yourself.
+Call step_planner with the existing plan:
 
 ```
 Agent(
   subagent_type: "step_planner",
-  description: "Plan: <request summary>",
-  prompt: "The user wants to build the following: <user request verbatim>.
+  description: "Append steps for: SUMMARY",
+  prompt: "BUILD REQUEST: USER_REQUEST_VERBATIM
 
-Project root: <absolute path>
+Project root: ABSOLUTE_PATH
 
-Produce a complete PLAN.md for this project."
+EXISTING PLAN.md:
+PASTE_FULL_PLAN_CONTENTS
+
+Append new steps only."
 )
 ```
 
-After `step_planner` completes, read `PLAN.md` and present the plan to the user. Ask: "Does this plan look right? Any changes before I start?"
-
-Do not proceed to Phase 2 until the user approves. If changes are requested, invoke `step_planner` again in append/edit mode with the requested changes.
+After it completes: show the new steps to the user, ask for approval.
+**Do not proceed until the user says yes.**
 
 ---
 
-## Phase 2 — Execute
+## EXECUTE mode
 
-This is the core loop. Repeat for every `pending` step in `PLAN.md`, strictly in order.
+Repeat this loop for every `pending` step in PLAN.md, one at a time.
 
-**Never execute a step yourself. Never skip the tester. Never start the next step until the tester returns PASS.**
+### Before each step
 
-### For each step, run this exact pipeline:
+1. Read PLAN.md → get current step's TITLE, WHAT, FILES, CHECK.
+2. Read `.stepwise/handoff_stepN-1.md` if it exists. This is the only prior context to pass.
+3. Set step Status to `in progress` in PLAN.md.
 
-#### 2a — Prepare context
-
-Before invoking any agent:
-
-1. Read `PLAN.md` — extract the current step's `What`, `Files`, `Check`
-2. Read `.stepwise/handoff_stepN-1.md` if it exists (previous step's handoff) — this is the only prior context to pass
-3. Update the step's `Status` to `in progress` in `PLAN.md`
-
-Do not read source files. Do not scan the project. The handoff is enough.
-
-#### 2b — Invoke step_developer
+### Call step_developer
 
 ```
 Agent(
   subagent_type: "step_developer",
-  description: "Step N — <title>",
-  prompt: "You are executing Step N of a build plan.
+  description: "Step N — TITLE",
+  prompt: "STEP: N — TITLE
+WHAT: COPY_FROM_PLAN
+FILES: COPY_FROM_PLAN
+CHECK: COPY_FROM_PLAN
 
-**What**: <copy from PLAN.md>
-**Files**: <copy from PLAN.md>
-**Check**: <copy from PLAN.md>
+HANDOFF:
+PASTE_HANDOFF_CONTENTS (or 'None — this is step 1.')
 
-**Handoff from previous step**:
-<paste contents of .stepwise/handoff_stepN-1.md, or 'No previous handoff — this is step 1.' if none>
-
-Working directory: <absolute path to project root>"
+Working directory: ABSOLUTE_PATH"
 )
 ```
 
-#### 2c — Invoke step_tester
+### Call step_tester
 
-After `step_developer` completes, always invoke `step_tester` — even if the developer reports success:
+Always call after step_developer, even if developer reports success:
 
 ```
 Agent(
   subagent_type: "step_tester",
-  description: "Test Step N — <title>",
-  prompt: "Run the sanity check for Step N.
-
-**Step**: N — <title>
-**Check**: <exact command from PLAN.md>
-**Working directory**: <absolute path to project root>"
+  description: "Test Step N — TITLE",
+  prompt: "STEP: N — TITLE
+CHECK: EXACT_COMMAND_FROM_PLAN
+DIR: ABSOLUTE_PATH"
 )
 ```
 
-#### 2d — Evaluate result
+### After tester returns
 
-| Tester result | Action |
-|---|---|
-| PASS | Update step to `done` in `PLAN.md`. Proceed to next step. |
-| FAIL | Update step to `blocked` in `PLAN.md`. Stop. Report to user with full tester output. Wait for instructions. |
-
----
-
-## Handoff files
-
-Location: `.stepwise/handoff_stepN.md`
-Written by: `step_developer`
-Read by: orchestrator (to pass to the next `step_developer`)
-Max: 10 lines — exports, files created, env vars, critical notes only
-
----
-
-## Tracking
-
-`PLAN.md` is the live source of truth:
-- `pending` — not started
-- `in progress` — agent running
-- `done` — tester returned PASS
-- `blocked` — tester returned FAIL, needs user intervention
-
----
-
-## Stack detection (for step_planner)
-
-Pass the stack to `step_planner` if known. If unknown, the planner will ask before producing the plan.
+- **PASS** → set Status to `done` in PLAN.md → proceed to next step.
+- **FAIL** → set Status to `blocked` in PLAN.md → stop → report full tester output to user → wait for instructions.
