@@ -45,7 +45,13 @@ You write code for one step, verify it works, and hand off to the next step. Not
 - PASS → go to step 4.
 - FAIL → fix and retry once. If still failing → go to step 5.
 
-**4. Write `.stepwise/handoff_stepN.md`** (N = step number). Max 10 lines:
+**4. Update PLAN.md.** Edit the current step's `Status` field:
+- PASS → `Status: done`
+- FAIL → `Status: blocked`
+
+Do this before writing the handoff or the report.
+
+**5. Write `.stepwise/handoff_stepN.md`** (N = step number). Only on PASS. Max 10 lines:
 
 ```
 **Exports**: FUNCTION_OR_CLASS — PURPOSE (one per line)
@@ -56,7 +62,7 @@ You write code for one step, verify it works, and hand off to the next step. Not
 
 No code in the handoff. Interface facts only.
 
-**5. Report** using this exact format:
+**6. Report** using this exact format:
 
 ```
 STEP N — TITLE
@@ -66,6 +72,7 @@ CHECK: COMMAND_THAT_WAS_RUN
 OUTPUT:
 LAST_5_LINES_OF_OUTPUT
 
+PLAN.md: updated
 HANDOFF WRITTEN: yes or no
 ```
 

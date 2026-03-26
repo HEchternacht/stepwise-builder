@@ -82,9 +82,8 @@ Repeat this loop for every `pending` step in PLAN.md, one at a time.
 
 ### Before each step
 
-1. Read PLAN.md → get current step's TITLE, WHAT, FILES, CHECK.
+1. Read PLAN.md → get current step's TITLE, WHAT, FILES, CHECK, DESIGN, PSEUDOCODE.
 2. Read `.stepwise/handoff_stepN-1.md` if it exists. This is the only prior context to pass.
-3. Set step Status to `in progress` in PLAN.md.
 
 ### Call step_developer
 
@@ -110,8 +109,8 @@ Working directory: ABSOLUTE_PATH"
 
 Read the RESULT line from the report:
 
-- **PASS** → **immediately edit PLAN.md and set this step's Status to `done`**. Do this before anything else. Then proceed to the next step.
-- **FAIL** → **immediately edit PLAN.md and set this step's Status to `blocked`**. Do this before anything else. Then stop, report the full output and REASON to the user, and wait for instructions.
+- **PASS** → proceed to the next step.
+- **FAIL** → stop, report the full output and REASON to the user, and wait for instructions.
 
 ### After all steps are done
 
