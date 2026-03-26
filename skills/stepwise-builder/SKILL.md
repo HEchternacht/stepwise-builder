@@ -110,8 +110,8 @@ Working directory: ABSOLUTE_PATH"
 
 Read the RESULT line from the report:
 
-- **PASS** → set Status to `done` in PLAN.md → proceed to next step.
-- **FAIL** → set Status to `blocked` in PLAN.md → stop → report the full output and REASON to the user → wait for instructions.
+- **PASS** → **immediately edit PLAN.md and set this step's Status to `done`**. Do this before anything else. Then proceed to the next step.
+- **FAIL** → **immediately edit PLAN.md and set this step's Status to `blocked`**. Do this before anything else. Then stop, report the full output and REASON to the user, and wait for instructions.
 
 ### After all steps are done
 
