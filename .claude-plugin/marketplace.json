@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "stepwise-builder",
-      "source": ".",
+      "source": { "source": "github", "repo": "HEchternacht/stepwise-builder" },
       "description": "Agentic step-by-step project builder. Plans first, gets approval, then executes one verified step at a time via subagents.",
       "version": "1.0.0"
     }

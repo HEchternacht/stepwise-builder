@@ -5,165 +5,135 @@ description: "Agentic step-by-step project builder. Plans first, gets approval, 
 
 # Stepwise Builder
 
-A disciplined, incremental build workflow. Small steps, verified at each boundary, minimal token usage between steps.
+An orchestrator. It does not write code, plan, or test directly. It delegates all work to three dedicated agents and enforces the pipeline.
 
-## On start
+## On start — always do this first
 
-If the `/token-efficiency` skill is available, invoke it before doing anything else.
+If the `token-efficiency` skill is available, invoke it before anything else.
 
 ---
 
 ## Phase 0 — Detect mode
 
-Before planning, check if `PLAN.md` already exists in the project root.
+Check if `PLAN.md` exists in the project root.
 
-- **No PLAN.md** → proceed to Phase 1 (new project)
-- **PLAN.md exists + user is adding a feature or fix** → proceed to Phase 0b (append steps)
-- **PLAN.md exists + user typed `/step`** → proceed to Phase 2 (resume execution)
+| Condition | Action |
+|---|---|
+| No `PLAN.md` | Phase 1 — new plan |
+| `PLAN.md` exists + user requesting feature/fix | Phase 0b — append steps |
+| `PLAN.md` exists + no new request | Phase 2 — resume execution |
 
-### Phase 0b — Append steps to existing plan
+### Phase 0b — Append mode
 
-When the user wants to add a feature or fix something in an already-planned project, do NOT start a new plan. Instead:
+Invoke `step_planner` in append mode:
 
-1. Read `PLAN.md`
-2. Design only the new steps needed (same format as below)
-3. Append them to `PLAN.md` with status `pending`
-4. Tell the user: "Added N steps to the plan. Ready to execute?"
-5. On approval, proceed to Phase 2 at the first new pending step
+```
+Agent(
+  subagent_type: "step_planner",
+  description: "Append steps for: <request summary>",
+  prompt: "APPEND MODE. The user wants to add the following to an existing project: <user request>.
+
+Here is the current PLAN.md:
+<paste full PLAN.md contents>
+
+Append only the new steps needed. Do not rewrite existing steps."
+)
+```
+
+After the planner writes the updated `PLAN.md`, present the new steps to the user and ask for approval. Do not proceed to Phase 2 until approved.
 
 ---
 
 ## Phase 1 — Plan
 
-Generate a complete step-by-step plan and get user approval before writing any code.
+Invoke the `step_planner` agent. Do not plan yourself.
 
-### How to decompose into steps
+```
+Agent(
+  subagent_type: "step_planner",
+  description: "Plan: <request summary>",
+  prompt: "The user wants to build the following: <user request verbatim>.
 
-A good step:
-- Does exactly one logical thing
-- Can be verified with a one-liner sanity check
-- Is small enough that if it breaks, the cause is obvious
-- Leaves prior files untouched unless integration is the explicit purpose of that step
+Project root: <absolute path>
 
-Typical order: env setup → deps → skeleton → domain logic → framework integration → each feature → config → final check.
-
-Adapt to complexity: a simple API might be 6 steps, a multi-service system 15+.
-
-### PLAN.md format
-
-```markdown
-# Build Plan: <project name>
-
-## Goal
-<one paragraph>
-
-## Steps
-
-### Step 1 — <title>
-**What**: <what this step does>
-**Files**: <files created or modified>
-**Check**: <one-liner to verify it works>
-**Status**: pending
+Produce a complete PLAN.md for this project."
+)
 ```
 
-After writing `PLAN.md`, present the plan and ask: "Does this look right? Any changes before I start?"
+After `step_planner` completes, read `PLAN.md` and present the plan to the user. Ask: "Does this plan look right? Any changes before I start?"
 
-Do not proceed until the user approves.
+Do not proceed to Phase 2 until the user approves. If changes are requested, invoke `step_planner` again in append/edit mode with the requested changes.
 
 ---
 
 ## Phase 2 — Execute
 
-Execute steps strictly sequentially. Never start step N+1 until step N is done and its check passed.
+This is the core loop. Repeat for every `pending` step in `PLAN.md`, strictly in order.
 
-**Each step MUST be executed by invoking the `Agent` tool** (subagent_type: `general-purpose`). Do not execute steps directly in the main conversation — always spawn a dedicated agent. This is not optional.
+**Never execute a step yourself. Never skip the tester. Never start the next step until the tester returns PASS.**
 
-### Token-efficient execution
+### For each step, run this exact pipeline:
 
-**Before invoking the Agent tool for each step**, the orchestrator must:
+#### 2a — Prepare context
 
-1. Read `PLAN.md` — identify the current pending step
-2. Read **only** the handoff file from the previous step (`.stepwise/handoff_stepN.md`) — do not re-read source files unless they are in the current step's `Files`
-3. Read source files **only** if they are listed in the current step's `Files` — nothing else
-4. Mark the step `in progress` in `PLAN.md`
+Before invoking any agent:
 
-This means: **no full project scans between steps**. The handoff is the only inter-step context.
+1. Read `PLAN.md` — extract the current step's `What`, `Files`, `Check`
+2. Read `.stepwise/handoff_stepN-1.md` if it exists (previous step's handoff) — this is the only prior context to pass
+3. Update the step's `Status` to `in progress` in `PLAN.md`
 
-### Agent tool usage
+Do not read source files. Do not scan the project. The handoff is enough.
 
-Call the Agent tool like this for every step:
+#### 2b — Invoke step_developer
 
 ```
 Agent(
-  subagent_type: "general-purpose",
+  subagent_type: "step_developer",
   description: "Step N — <title>",
-  prompt: <subagent prompt below>
+  prompt: "You are executing Step N of a build plan.
+
+**What**: <copy from PLAN.md>
+**Files**: <copy from PLAN.md>
+**Check**: <copy from PLAN.md>
+
+**Handoff from previous step**:
+<paste contents of .stepwise/handoff_stepN-1.md, or 'No previous handoff — this is step 1.' if none>
+
+Working directory: <absolute path to project root>"
 )
 ```
 
-### Subagent prompt structure
+#### 2c — Invoke step_tester
+
+After `step_developer` completes, always invoke `step_tester` — even if the developer reports success:
 
 ```
-You are executing Step N of a stepwise build plan.
+Agent(
+  subagent_type: "step_tester",
+  description: "Test Step N — <title>",
+  prompt: "Run the sanity check for Step N.
 
-## Task
-<copy "What" from PLAN.md verbatim>
-
-## Files you may create or modify
-<list from "Files" in PLAN.md>
-
-## Context from previous step
-<paste contents of .stepwise/handoff_stepN-1.md — nothing else>
-
-## Constraints
-- Only touch files listed above
-- Do not refactor prior code unless strictly required
-- Minimal changes to any file not owned by this step
-
-## Sanity check
-Run this when done and confirm it passes:
-<"Check" from PLAN.md>
-
-If it fails: attempt fix up to 2 times, then stop and report the error clearly.
-
-## When done, write .stepwise/handoff_stepN.md with this exact format:
-**Exports**: <functions/classes/vars other steps may need, one line each>
-**Env vars**: <any env vars consumed or produced>
-**Notes**: <one or two lines the next step must know — nothing else>
+**Step**: N — <title>
+**Check**: <exact command from PLAN.md>
+**Working directory**: <absolute path to project root>"
+)
 ```
 
-### After each subagent completes
+#### 2d — Evaluate result
 
-1. Update step status in `PLAN.md` to `done` or `blocked`
-2. If `blocked`: stop and report to user before continuing
-3. If `done`: proceed to next pending step
-
-### Sanity check philosophy
-
-The check answers one question: **"Did this step basically work?"**
-
-- `python -c "import mymodule"` — imports without error
-- `node -e "require('./utils')"` — loads without error
-- `cargo check` — compiles
-- A process starts and exits 0
-
-Not unit tests. Not coverage. Not edge cases. Just: does it run?
-
-Prefer single-command checks that exit in under 2 seconds.
+| Tester result | Action |
+|---|---|
+| PASS | Update step to `done` in `PLAN.md`. Proceed to next step. |
+| FAIL | Update step to `blocked` in `PLAN.md`. Stop. Report to user with full tester output. Wait for instructions. |
 
 ---
 
 ## Handoff files
 
-Stored in `.stepwise/handoff_stepN.md`. Written by each subagent, read by the next.
-
-**Rules:**
-- Max 10 lines
-- Only what the next step actually needs
-- No code, no file contents — only interface facts
-- Orchestrator never modifies them, only subagents write them
-
-These files are the memory of the build. They replace file re-reading between steps.
+Location: `.stepwise/handoff_stepN.md`
+Written by: `step_developer`
+Read by: orchestrator (to pass to the next `step_developer`)
+Max: 10 lines — exports, files created, env vars, critical notes only
 
 ---
 
@@ -171,26 +141,12 @@ These files are the memory of the build. They replace file re-reading between st
 
 `PLAN.md` is the live source of truth:
 - `pending` — not started
-- `in progress` — subagent running
-- `done` — check passed
-- `blocked` — failed, needs user intervention
+- `in progress` — agent running
+- `done` — tester returned PASS
+- `blocked` — tester returned FAIL, needs user intervention
 
 ---
 
-## Step isolation rules
+## Stack detection (for step_planner)
 
-1. Each step declares its files upfront — subagent must respect this
-2. Integration steps are explicit — coupling is a dedicated step, not a side effect
-3. Read freely, write minimally — subagents can read anything, but only write to declared files
-4. No opportunistic refactoring
-
----
-
-## Stack detection
-
-- **Python**: venv → requirements/pyproject → skeleton → domain → integration
-- **Node/TypeScript**: npm init → tsconfig → skeleton → domain → integration
-- **Rust**: cargo new → Cargo.toml deps → module structure
-- **Go**: go mod init → package structure
-
-When uncertain about the stack, ask before writing the plan.
+Pass the stack to `step_planner` if known. If unknown, the planner will ask before producing the plan.
